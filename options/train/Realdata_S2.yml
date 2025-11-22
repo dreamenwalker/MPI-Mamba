@@ -1,0 +1,182 @@
+# general settings
+name:  train_mambadiff_s2_seed101
+model_type: MPI_Mamba_S2
+scale: 1
+num_gpu: 1  # set num_gpu: 0 for cpu mode
+manual_seed: 101
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: TrainSet
+    type: PairedImageIRDataset
+    dataroot_gt: <PATH_TO_TRAIN_GT_IMAGES>
+    dataroot_lq: <PATH_TO_TRAIN_LQ_IMAGES>
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+    # data loader
+    use_shuffle: true
+    num_worker_per_gpu: 8
+    batch_size_per_gpu: 32
+    dataset_enlarge_ratio: 1
+    prefetch_mode: ~
+
+    ### -------------Progressive training--------------------------
+    mini_batch_sizes: [32,32,32,32,32,32]             # Batch size per gpu
+    iters: [20000,20000,20000,20000,20000,20000]
+    gt_size: 64   # Max patch size for progressive training
+    gt_sizes: [64,64,64,64,64,64]  # Patch sizes for progressive training.
+    ### ------------------------------------------------------------
+
+    dataset_enlarge_ratio: 1
+    prefetch_mode: ~
+
+  val:
+    name: ValSet
+    type: PairedImageIRDataset
+    dataroot_gt: <PATH_TO_VAL_GT_IMAGES>
+    dataroot_lq: <PATH_TO_VAL_LQ_IMAGES>
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+# network structures
+network_g:
+  type: Mamba
+  inp_channels: 3
+  out_channels: 3
+  dim: 48
+  num_blocks: [2,2,2,2]
+  num_refinement_blocks: 4
+  heads: [1,2,4,8]
+  ffn_expansion_factor: 2.66
+  bias: False
+  LayerNorm_type: WithBias
+  dual_pixel_task: False
+  embed_dim: 64
+  group: 4 # N=4*4
+
+network_le:
+  type: latent_encoder_gelu
+  in_chans: 6
+  embed_dim: 64 # same as above
+  block_num: 6
+  group: 4 # same as above
+  stage: 1
+  patch_expansion: 0.5
+  channel_expansion: 4
+
+network_le_dm:
+  type: latent_encoder_gelu
+  in_chans: 3
+  embed_dim: 64 # same as above
+  block_num: 6
+  group: 4 # same as above
+  stage: 2
+  patch_expansion: 0.5
+  channel_expansion: 4
+
+network_d:
+  type: denoising
+  in_channel: 256 # (embed_dim*4)
+  out_channel: 256 # (embed_dim*4)
+  inner_channel: 512
+  block_num: 4
+  group: 4 # same as above
+  patch_expansion: 0.5
+  channel_expansion: 2
+
+diffusion_schedule:
+  apply_ldm: False
+  schedule: linear
+  timesteps: 8
+  linear_start: 0.1 # 1e-6
+  linear_end: 0.99 # 1e-2
+
+# path
+path:
+  pretrain_network_g: <PATH_TO_PRETRAINED_GENERATOR_WEIGHTS>
+  param_key_g: params
+  strict_load_g: true
+
+  pretrain_network_le: <PATH_TO_PRETRAINED_LATENT_ENCODER_STAGE1_WEIGHTS>
+  param_key_g: params
+  strict_load_le: true
+
+  pretrain_network_le_dm: <PATH_TO_PRETRAINED_LATENT_ENCODER_STAGE2_WEIGHTS_OR_~>
+  param_key_g: params
+  strict_load_le_dm: true
+
+  pretrain_network_d: <PATH_TO_PRETRAINED_DENOISING_WEIGHTS_OR_~>
+  param_key_g: params
+  strict_load_d: true
+
+  resume_state: <PATH_TO_RESUME_STATE_OR_~>
+
+# training settings
+train:
+  total_iter: 100000
+  warmup_iter: -1 # no warm up
+  use_grad_clip: True
+
+  scheduler:
+    type: CosineAnnealingRestartCyclicLR
+    periods: [50000, 80000]       
+    restart_weights: [1,1]
+    eta_mins: [0.0002,0.000001]
+  
+  mixing_augs:
+    mixup: false
+    mixup_beta: 1.2
+    use_identity: true
+
+  optim_total:
+    type: AdamW
+    lr: !!float 2e-4
+    weight_decay: !!float 1e-4
+    betas: [0.9, 0.999]
+  
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+
+  pixel_diff_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+
+# validation settings
+val:
+  val_freq: !!float 4e3
+  save_img: False
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    ssim:
+      type: calculate_ssim
+      crop_border: 0
+      test_y_channel: false
+    nrmse:
+      type: calculate_nrmse
+      crop_border: 0
+      test_y_channel: false
+# logging settings
+logger:
+  print_freq: 1000
+  save_checkpoint_freq: !!float 4e3
+  use_tb_logger: true
+  wandb:
+    project: ~
+    resume_id: ~
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29500
