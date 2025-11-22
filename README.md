@@ -20,6 +20,7 @@ pip install -r requirements.txt
 
 ## Datasets | 数据集
 - 训练/验证使用成对数据：`GT` 为目标高清图像，`LQ` 为对应的低质量/含噪图像。
+- 仿真数据集可在data文件夹找到下载链接。
 - 在配置文件中使用占位符来指示路径用途（见下文“配置含义”）。
 
 ## Training | 训练
