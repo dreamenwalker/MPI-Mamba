@@ -61,6 +61,7 @@ python test.py -opt options/test/test.yml
   - `path.resume_state`: 断点恢复的训练状态文件路径。
 
 ## Citation | 引用
+各位同行，如果提供的内容对您有帮助，请进行引用，该工作从实验设计到工作发表，历时4年左右，如果有不明白的地方请多多交流，希望能对MPI图像算法工作有促进作用。
 If you find the code helpful in your research or work, please cite:
 
 ```
