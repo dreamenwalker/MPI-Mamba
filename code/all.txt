@@ -1,0 +1,98 @@
+%% 绯荤粺鍙傛暟
+function [img_gt, img_blur] = x_space(path,c0,G)
+% path = 'E:\data\input\mnist_pic_1.png';
+kB = 1.3806488e-23;     TT = 25+273.15;     u0 = 4*pi*1e-7;                	%澶栭儴甯搁噺锛氱幓灏斿吂鏇煎父鏁発B锛岀粷瀵规俯搴︼紙瀹ゆ俯)TT锛岀湡绌虹瀵肩巼u0
+D = 20e-9;      V=D^3*pi/6;     Ms = 0.6/u0;    m=Ms*V;                     %鏍峰搧淇℃伅锛氫釜鏁版祿搴锛岀矑寰凞锛岀矑瀛愪綋绉疺锛岀矑瀛愰ケ鍜岀鍖栧己搴�Ms=0.6T/u0)锛岀矑瀛愮鐭﹎
+
+Gx=G/u0;fx=25e3;   Tx=1/fx;  Ax=Gx*15e-3;  Xmax=Ax/Gx;
+Gy=G/u0;fy=24.75e3;   Ty=1/fy;  Ay=Gy*15e-3;  Ymax=Ay/Gy;
+Fs=2.475e6;     Fn=0.004*Fs;     t=0.5/Fs:1/Fs:Fn/Fs-0.5/Fs;      Len_t=Fn;                  	%閲囨牱淇℃伅锛氶噰鏍风巼Fs锛岄噰鏍锋暟Fn,绂绘暎鏃堕棿鐐箃锛堝崟浣峴锛�
+% Fs=2.5e6;     Fn=1e4;     t=0.5/Fs:1/Fs:Fn/Fs-0.5/Fs;      Len_t=Fn;                  	%閲囨牱淇℃伅锛氶噰鏍风巼Fs锛岄噰鏍锋暟Fn,绂绘暎鏃堕棿鐐箃锛堝崟浣峴锛�       
+
+G=[Gx;Gy];
+K=u0*m/(kB*TT);                                                                      %K锛氶儙涔嬩竾鏂圭▼鐨勬瘮渚嬬郴鏁�  
+Hb=1e-3*1e-4/u0;
+Hsat=100/K;                                                                 %鍗曚綅A/m
+%% 鎴愬儚绌洪棿鍙傛暟
+step=0.25e-3;                                                    %鏍峰搧鍒嗗竷绌洪棿绂绘暎鐐圭殑鏈�皬闂磋窛涓�.1mm
+x=-Xmax:step:Xmax;	
+x_l=x(1:end-1);x_r=x(2:end);x=(x_l+x_r)/2;
+n_c=length(x);	x=x';	Len_x=length(x);   	%绌洪棿淇℃伅锛�D鎴愬儚绌洪棿锛岄暱搴﹀崟浣峬
+y=-Ymax:step:Ymax;
+y_l=y(1:end-1);y_r=y(2:end);y=(y_l+y_r)/2;
+n_r=length(y);  y=y';	Len_y=length(y);   	
+
+img = imread(path);
+c_TIAN=im2double(img);
+%c0 = 1;
+c = c_TIAN * c0;
+%% 淇″彿鐢熸垚
+%% 婵�姳淇″彿浜х敓鍜屽搷搴斾俊鍙锋帰娴嬩竴锛氫笉鍔犳搴﹀満
+theta=pi/2;
+Hx_t=Ax*cos(2*pi*fx*t+theta);             Hy_t=Ay*cos(2*pi*fy*t+theta);                                         
+H_t=[Hx_t;Hy_t]; 
+H_Amp_t=sqrt(sum(H_t.^2));  H_Dir_t=bsxfun(@rdivide,H_t,H_Amp_t);          	%H_t_Amp鍜孒_t_Dir鍒嗗埆鏄疕_t鐨勫箙鍊煎拰鏂瑰悜
+dHx_t=-Ax*2*pi*fx*sin(2*pi*fx*t+theta);   dHy_t=-Ay*2*pi*fy*sin(2*pi*fy*t+theta);
+dH_t=[dHx_t;dHy_t];                                     %H_t鍜宒H_t琛ㄧず2缁村悜閲忥紝锛屾瘡涓�垪浠ｈ〃涓�釜绂绘暎鏃跺埢鐨勬縺鍔卞悎纾佸満鍚戦噺H(t)鍜宒H(t)/dt
+dH_Amp_t=sqrt(sum(dH_t.^2));  dH_Dir_t=bsxfun(@rdivide,dH_t,dH_Amp_t);          	%H_t_Amp鍜孒_t_Dir鍒嗗埆鏄疕_t鐨勫箙鍊煎拰鏂瑰悜
+
+r1=K*H_t;	   r1_Mag=K*H_Amp_t;   r1_Dir=H_Dir_t;                          %r1锛屽悜閲忥紱dr1_t,鏃堕棿瀵兼暟锛況1_Mag,妯″�锛況1_Dir锛屾柟鍚�
+L_r1Mag=coth(r1_Mag)-1./r1_Mag;
+M_Amp_t=sum(c(:))*m*L_r1Mag;                                               	%鍙傛暟c鏈�悗浠ｅ叆鎵ц鏁堢巼鏇撮珮
+M_t=bsxfun(@times,M_Amp_t,H_Dir_t);                                         %M_t(M_H)鍜孒_t鏂瑰悜鐩稿悓         
+
+dr1_t=K*dH_t;
+dr1_t_parl=bsxfun(@times,sum(dr1_t.*r1)./r1_Mag,r1_Dir);
+dr1_t_perp=dr1_t-dr1_t_parl;
+dL_r1Mag=1./(r1_Mag.^2) - coth(r1_Mag).^2 + 1;                                   %鍙傝�浼厠鍒╂枃绔�D x-space
+
+dL_t=bsxfun(@times,dL_r1Mag,dr1_t_parl)+bsxfun(@times,L_r1Mag./r1_Mag,dr1_t_perp);
+dM_t=sum(c(:))*m*dL_t;                                                      %dM_t鏄搷搴斾俊鍙凤紝褰㈠紡涓�*Fn銆傜涓�鏄痻杞存柟鍚戜俊鍙凤紝绗簩琛屾槸y鏂瑰悜淇″彿
+dM_Amp_t=sqrt(sum(dM_t.^2));
+dMx_t=dM_t(1,:);    dMy_t=dM_t(2,:);
+dXffp=dH_t./repmat(G,1,size(dH_t,2)); 
+dXffp_Amp=sqrt(sum(dXffp.^2)); 
+dXffp_Dir=dXffp./repmat(dXffp_Amp,2,1); %FFP鎵弿閫熷害(鐭㈤噺)
+PSF_parl=sum(dM_t.*dXffp_Dir);      
+temp=[-dXffp_Dir(2,:);dXffp_Dir(1,:)];%temp姣忎釜鍒楀悜閲忓拰dXffp_Dir鍨傜洿
+PSF_perp=sum(dM_t.*temp);      
+
+%% 婵�姳淇″彿浜х敓鍜屽搷搴斾俊鍙锋帰娴嬩簩锛氭坊鍔犳搴﹀満
+Hs_x=Gx*x;   Hs_y=Gy*y;   Hs=zeros(Len_y,Len_x,2);  Hs(:,:,1)=repmat(Hs_x',Len_y,1);   Hs(:,:,2)=repmat(Hs_y,1,Len_x);   
+Hs_Amp=sqrt(Hs(:,:,1).^2+Hs(:,:,2).^2);     Hs_Dir=zeros(Len_y,Len_x,2);   Hs_Dir=Hs./repmat(Hs_Amp,1,1,2); 
+dr2_t=dr1_t;     
+dM2_t=zeros(2,Fn);
+for j=1:1:Len_y
+    for i=1:1:Len_x
+        if c(j,i)~=0
+%            r2=K*(bsxfun(@minus,H_t,[Gx;Gy].*[x(i);y(j)]));       r2_Mag=sqrt(sum(r2.^2));                      %鍚堢鍦�H(t)-GX
+            r2=K*(bsxfun(@minus,H_t,[Gx;Gy].*[x(i);y(j)]));       r2_Mag=sqrt(sum(r2.^2));                      %鍚堢鍦�H(t)-GX
+            L_r2Mag=coth(r2_Mag)-1./r2_Mag; dL_r2Mag=1./(r2_Mag.^2)-(coth(r2_Mag)).^2+1;
+            dr2_t_parl=bsxfun(@times,sum(dr2_t.*r2)./(r2_Mag.^2),r2);
+            dr2_t_perp=dr2_t-dr2_t_parl;
+            dM2_t=dM2_t+c(j,i)*m*(bsxfun(@times,dL_r2Mag,dr2_t_parl)+bsxfun(@times,L_r2Mag./r2_Mag,dr2_t_perp));
+        end
+    end
+end
+Xffp=H_t./repmat(G,1,size(H_t,2));    xffp=Xffp(1,:);	yffp=Xffp(2,:);                                %FFP杞ㄨ抗(鐭㈤噺)
+
+% SNR=30;                                             %璁剧疆淇″櫔姣�
+% dM2_t=dM2_t/1e6;                                      
+% Y=awgn(dM2_t,SNR,'measured');                      %鍏堣绠椾俊鍙峰姛鐜囷紝鍐嶆寜鐓т俊鍣瘮璁＄畻鍣０鍔熺巼锛屽苟娣诲姞鍣０
+% Power_sig=sum(sum(dM2_t.^2))/length(dM2_t(:));            %璁＄畻淇″彿鍔熺巼
+% noise=Y-dM2_t;
+% Power_noi=sum(sum(noise.^2))/length(noise(:));      %璁＄畻鍣０鍔熺巼
+% SNR=10*log10(Power_sig./Power_noi);                 %楠岀畻淇″櫔姣�
+% dM2_t=Y;
+
+SIG_parl=sum(dM2_t.*dXffp_Dir);      IMG_parl=SIG_parl./dXffp_Amp;
+%% 閲嶅缓
+%% 鎵弿杞ㄨ抗
+%鎵弿杞ㄨ抗鏍呮牸鍖�
+[xpos,ypos]=meshgrid(min(xffp):step:max(xffp),min(yffp):step:max(yffp));
+IMG_parl=griddata(xffp,yffp,IMG_parl,xpos,ypos,'v4');IMG_parl=c0 * IMG_parl/max(IMG_parl(:));
+IMG_parl(isnan(IMG_parl))=0;
+img_gt = c;
+img_blur = IMG_parl;
+c0 = c0;
+% end
