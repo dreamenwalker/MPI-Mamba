@@ -19,4 +19,6 @@ MPI仿真数据链接如下：
 通过网盘分享的文件：data_split.zip
 链接: https://pan.baidu.com/s/1_NPxCe5Jvj_L05brTKQeWg?pwd=pp8x 提取码: pp8x
 
+## 在 6T下的仿真数据
 
+链接: https://pan.baidu.com/s/1QNecO3ODbzkneiwXp-AN8Q?pwd=kyas 提取码: kyas
